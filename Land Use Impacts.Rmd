@@ -15,15 +15,6 @@ library(gt)
 library(gtExtras)
 library(ggspatial)
 
-# Download the NLCD 2019 raster file 
-# Warning, the file size is ~25GB
-# If it fails, try Tools > Global Options > Packages, and un-select "Use Internet Explorer library/proxy for HTTP".
-temp <- tempfile()
-dl_url <- "https://s3-us-west-2.amazonaws.com/mrlc/nlcd_2019_land_cover_l48_20210604.zip"
-download.file(dl_url, destfile = temp)
-unzip(temp, exdir = paste0(getwd(), "/Data/NLCD 2019 Land Cover"))
-unlink(temp)
-
 # Load the raster data
 raster_path <- "Data/NLCD 2019 Land Cover/NLCD 2019 Land Cover.img"
 raster_file <- raster(raster_path)
@@ -50,6 +41,73 @@ eco_regions <- st_join(st_as_sf(vector_file),
   select(-Description, -NA_L2NAME, -NA_L1NAME)
 
 ```
+
+```{r include=FALSE, warning=FALSE}
+
+library(FedData)
+
+# Returns a raster
+raster_file <- map(.x = vector_file$Name, 
+                   .f = function(x) {
+                     
+                     proj <- vector_file %>% sf::st_as_sf() %>% filter(Name == x)
+                     
+                     get_nlcd(
+                       template = proj,
+                       year = 2019,
+                       label = x,
+                       dataset = "landcover") %>%
+                       exact_extract(proj) %>%
+                       as.data.frame() %>%
+                       mutate(Name = x)
+                     
+                   }
+) %>%
+  bind_rows()
+
+
+# WORKS!!! Just need to figure out the plots now
+test_tbl <- raster_file %>%
+  mutate(Area_Acres = coverage_fraction*900*0.000247105) %>%
+  group_by(value, Name) %>%
+  summarize(`Raster Count` = n(),
+            `Area (Acres)` = round(sum(Area_Acres), digits = 2)) %>%
+  rename("Class_Code" = value) %>%
+  left_join(
+    NLCD_Classifications <- data.frame(
+      Class_Code = c(11, 12, 21:24, 31, 41:43, 52, 71, 81, 82, 90, 95),
+      Class_Category = c("Other", "Other", rep("Developed", 4), "Other", rep("Forest", 3),
+                         "Shrubland", "Herbaceous", rep("Agriculture", 2), rep("Wetland", 2)),
+      Class_Name = c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
+                     "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
+                     "Deciduous Forest", "Evergreen Forest", "Mixed Forest", "Shrub/Scrub", 
+                     "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
+                     "Woody Wetlands", "Emergent Herbaceous Wetlands")
+    )) %>%
+  left_join(eco_regions %>% st_drop_geometry(), by = "Name") %>%
+  mutate(Class_Name = fct_relevel(Class_Name, 
+                                  c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
+                                    "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
+                                    "Deciduous Forest", "Evergreen Forest", "Mixed Forest", "Shrub/Scrub", 
+                                    "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
+                                    "Woody Wetlands", "Emergent Herbaceous Wetlands"))) %>%
+  select(Name, "Classification Code" = Class_Code, `Raster Count`, `Area (Acres)`,
+         "Class Category" = Class_Category, "Classification" = Class_Name, `EcoRegion L1`, `EcoRegion L2`)
+
+
+## This one doesn't work 
+
+
+# Download the NLCD 2019 raster file 
+# Warning, the file size is ~25GB
+# If it fails, try Tools > Global Options > Packages, and un-select "Use Internet Explorer library/proxy for HTTP".
+dest_path <- paste0(getwd(), "/Data/NLCD 2019 Land Cover.zip")
+dl_url <- "https://s3-us-west-2.amazonaws.com/mrlc/nlcd_2019_land_cover_l48_20210604.zip"
+download.file(dl_url, destfile = dest_path)
+unzip(dest_path, exdir = paste0(getwd(), "/Data/NLCD 2019 Land Cover"))
+
+```
+
 
 ## {.tabset}
 
