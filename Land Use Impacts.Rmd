@@ -15,7 +15,16 @@ library(gt)
 library(gtExtras)
 library(ggspatial)
 
-# Load NLCD 2019 raster file (warning, ~25GB)
+# Download the NLCD 2019 raster file 
+# Warning, the file size is ~25GB
+# If it fails, try Tools > Global Options > Packages, and un-select "Use Internet Explorer library/proxy for HTTP".
+temp <- tempfile()
+dl_url <- "https://s3-us-west-2.amazonaws.com/mrlc/nlcd_2019_land_cover_l48_20210604.zip"
+download.file(dl_url, destfile = temp)
+unzip(temp, exdir = paste0(getwd(), "/Data/NLCD 2019 Land Cover"))
+unlink(temp)
+
+# Load the raster data
 raster_path <- "Data/NLCD 2019 Land Cover/NLCD 2019 Land Cover.img"
 raster_file <- raster(raster_path)
 
