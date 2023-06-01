@@ -27,11 +27,16 @@ NLCD_Classifications <- data.frame(
   Class_Code = c(11, 12, 21:24, 31, 41:43, 52, 71, 81, 82, 90, 95),
   Class_Category = c("Other", "Other", rep("Developed", 4), "Other", rep("Forest", 3),
                      "Shrubland", "Herbaceous", rep("Agriculture", 2), rep("Wetland", 2)),
-  Class_Name = c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
-                 "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
-                 "Deciduous Forest", "Evergreen Forest", "Mixed Forest", "Shrub/Scrub", 
-                 "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
-                 "Woody Wetlands", "Emergent Herbaceous Wetlands"))
+  Class_Name = factor(c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
+                        "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
+                        "Deciduous Forest", "Evergreen Forest", "Mixed Forest", "Shrub/Scrub", 
+                        "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
+                        "Woody Wetlands", "Emergent Herbaceous Wetlands"), 
+                      levels = c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
+                                 "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
+                                 "Deciduous Forest", "Evergreen Forest", "Mixed Forest", "Shrub/Scrub", 
+                                 "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
+                                 "Woody Wetlands", "Emergent Herbaceous Wetlands")))
 
 
 # Load US EPA Eco-region file and merge with vector file to generate a merged spatial data frame
@@ -66,12 +71,6 @@ get_proj_NLCD <- function(name) {
     rename("Class_Code" = value) %>%
     left_join(NLCD_Classifications, by = "Class_Code") %>%
     left_join(eco_regions %>% st_drop_geometry(), by = "Name") %>%
-    mutate(Class_Name = fct_relevel(Class_Name, 
-                                    c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
-                                      "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
-                                      "Deciduous Forest", "Evergreen Forest", "Mixed Forest", "Shrub/Scrub", 
-                                      "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
-                                      "Woody Wetlands", "Emergent Herbaceous Wetlands"))) %>%
     select(Name, "Classification Code" = Class_Code, `Raster Count`, `Area (Acres)`,
            "Class Category" = Class_Category, "Classification" = Class_Name, `EcoRegion L1`, `EcoRegion L2`)
   
@@ -103,30 +102,19 @@ Final_Table <- NLCD_Summary %>%
               values_from = `Area (Acres)`,
               values_fill = 0) %>%
   left_join(
-    NLCD_Summary %>% group_by(Classification) %>% summarize(Total = sum(`Area (Acres)`)),
+    NLCD_Summary %>% 
+      group_by(Classification) %>% 
+      summarize(Total = sum(`Area (Acres)`)),
     by = "Classification") %>%
   as.data.frame() %>%
   left_join(
-    data.frame(
-      Classification = c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
-                         "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
-                         "Deciduous Forest", "Evergreen Forest", "Mixed Forest", "Shrub/Scrub", 
-                         "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
-                         "Woody Wetlands", "Emergent Herbaceous Wetlands"),
-      `Classification Code` = as.factor(c(11, 12, 21:24, 31, 41:43, 52, 71, 81, 82, 90, 95))),
-    by = "Classification") %>%
-  select(`Classification.Code`, Classification, `Eastern Temperate Forests`,
+    NLCD_Classifications,
+    by = c("Classification" = "Class_Name")) %>%
+  select(`Class_Code`, Classification, `Eastern Temperate Forests`,
          `North American Deserts`, `Great Plains`, `Marine West Coast Forest`, 
-         `Mediterranean California`, `Total`) %>%
-  mutate(Classification = 
-           fct_relevel(Classification, 
-                       c("Open Water", "Perennial Ice/Snow", "Developed, Open Space", "Developed, Low Intensity",
-                         "Developed, Medium Intensity", "Developed, High Intensity", "Barren Land (Rock/Sand/Clay)", 
-                         "Mixed Forest", "Deciduous Forest", "Evergreen Forest", "Shrub/Scrub", 
-                         "Grassland/Herbaceous", "Pasture/Hay", "Cultivated Crops",
-                         "Woody Wetlands", "Emergent Herbaceous Wetlands")))
+         `Mediterranean California`, `Total`)
 
-
+# Create the final gt() table
 Final_Table %>%
   arrange(Classification) %>%
   # Create a gt() table from the final summary table
@@ -141,7 +129,7 @@ Final_Table %>%
     columns = "Classification") %>%
   # Color the text in the class code column according to class code 
   data_color(
-    columns = `Classification.Code`,
+    columns = `Class_Code`,
     colors = scales::col_factor(
       palette = c('#486DA1', '#E7EFFC', '#E1CDCE', '#DC9881', '#F10100', 
                   '#AB0101', '#B5AEA4', '#6CA966', '#1D6533', '#BDCC93', 
@@ -151,7 +139,7 @@ Final_Table %>%
     apply_to = c("text")) %>%
   # Color the cell background in the class code column according to class code 
   data_color(
-    columns = `Classification.Code`,
+    columns = `Class_Code`,
     colors = scales::col_factor(
       palette = c('#486DA1', '#E7EFFC', '#E1CDCE', '#DC9881', '#F10100', 
                   '#AB0101', '#B5AEA4', '#6CA966', '#1D6533', '#BDCC93', 
@@ -161,7 +149,7 @@ Final_Table %>%
     apply_to = c("fill")) %>%
   # Remove the column label from class code and re-label the classification column
   cols_label(
-    `Classification.Code` = "",
+    `Class_Code` = "",
     Classification = "NLCD Classification") %>%
   # Make the classification column bold text
   tab_style(
@@ -284,7 +272,7 @@ Individual project plots for all sites that impacted >1 acre of forest land (des
 
 Plot_Project_Class <- function(proj) {
   
-  # Create a spatial feature of the desired project, get the NLCD raster
+  # Create a spatial feature of the desired project
   proj_poly <- vector_file %>% 
     sf::st_as_sf() %>% 
     filter(Name == proj)
@@ -312,7 +300,7 @@ Plot_Project_Class <- function(proj) {
                     round(sum(filter(Area_Tbl, `Class Category` == "Forest")$Area), digits = 1), " acres of forest land")
   
   
-  # Crop the raster to the selected project (extend by 30m to show one additional tile)
+  # Plot the desired project with both raster classes and polygon overlay
   proj_raster %>%
     as.data.frame(xy = TRUE) %>%
     select(1, 2, "Class" = 4) %>%
@@ -355,7 +343,7 @@ Plot_Project_Class <- function(proj) {
 }
 
 
-# Plot all sites that have impacted forest land
+# Use the above function to plot all sites that have impacted forest land
 map(.x = NLCD_Summary %>%
       group_by(Name, `Class Category`) %>%
       summarize(Area = sum(`Area (Acres)`)) %>%
