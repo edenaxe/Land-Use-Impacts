@@ -92,6 +92,9 @@ NLCD_Summary <- map(.x = vector_file$Name,
 
 ```{r final table, echo=FALSE, warning=FALSE}
 
+# Suppress summarize warning
+options(dplyr.summarise.inform = FALSE)
+
 # Create a final summary table with acreage by NLCD class and EPA eco region (level 1)
 Final_Table <- NLCD_Summary %>%
   group_by(`Classification`, `EcoRegion L1`) %>%
@@ -282,15 +285,22 @@ Individual project plots for all sites that impacted >1 acre of forest land (des
 Plot_Project_Class <- function(proj) {
   
   # Create a spatial feature of the desired project, get the NLCD raster
-  proj_poly <- vector_file %>% sf::st_as_sf() %>% filter(Name == proj)
-  #proj_buff <- sf::st_buffer(proj$geometry, 60) %>% sf::st_as_sf()
+  proj_poly <- vector_file %>% 
+    sf::st_as_sf() %>% 
+    filter(Name == proj)
   
+  # Grab the NLCD raster associated with the desired project
   proj_raster <- get_nlcd(
     template = proj_poly,
     year = 2019,
     label = proj,
-    dataset = "landcover",
-    force.redo = TRUE) 
+    dataset = "landcover") 
+  
+  # Re-create the proj_poly with an updated and common CRS
+  proj_poly_crs <- vector_file %>% 
+    spTransform(crs(proj_raster)) %>% 
+    sf::st_as_sf() %>% 
+    filter(Name == proj)
   
   # Create a few summary variables to generate the subtitle
   Area_Tbl <- NLCD_Summary %>%
@@ -324,12 +334,12 @@ Plot_Project_Class <- function(proj) {
                                  "Cultivated Crops" = '#AC6F1F',
                                  "Woody Wetlands" = '#B8D7EF', 
                                  "Emergent Herbaceous Wetlands" = '#71A3C1')) +
-    geom_sf(data = vector_file %>% 
-              spTransform(crs(proj_raster)) %>% 
-              sf::st_as_sf() %>% filter(Name == proj) %>% 
-              select("Project Name" = Name), 
+    geom_sf(data = proj_poly_crs, 
             color = "black", size = 1, linetype = "solid", fill = NA) +
-    coord_sf() +
+    coord_sf(xlim = c((extent(proj_poly_crs)*1.05)@xmin,
+                      (extent(proj_poly_crs)*1.05)@xmax),
+             ylim = c((extent(proj_poly_crs)*1.05)@ymin,
+                      (extent(proj_poly_crs)*1.05)@ymax)) +
     theme_light() +
     labs(y = "",
          x = "",
@@ -337,7 +347,10 @@ Plot_Project_Class <- function(proj) {
          title = proj,
          subtitle = sub_txt) +
     theme(panel.border = element_rect(color = "#6c7571", linetype = "solid")) +
-    annotation_scale(location = "bl")
+    annotation_scale(location = "bl", 
+                     height = unit(0.15, "cm"),
+                     pad_x = unit(0.15, "cm"),
+                     pad_y = unit(0.15, "cm"))
   
 }
 
