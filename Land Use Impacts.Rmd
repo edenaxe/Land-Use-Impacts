@@ -6,15 +6,25 @@ output: html_document
 ```{r setup, include=FALSE, warning=FALSE, message=FALSE}
 
 # Load required packages
+if (!require(tidyverse)) install.packages('tidyverse')
+if (!require(FedData)) install.packages('FedData')
+if (!require(raster)) install.packages('raster')
+if (!require(rgdal)) install.packages('rgdal')
+if (!require(sf)) install.packages('sf')
+if (!require(exactextractr)) install.packages('exactextractr')
+if (!require(gt)) install.packages('gt')
+if (!require(gtExtras)) install.packages('gtExtras')
+if (!require(ggspatial)) install.packages('ggspatial')
+
+library(tidyverse)
+library(FedData)
 library(raster)
 library(rgdal)
 library(sf)
 library(exactextractr)
-library(tidyverse)
 library(gt)
 library(gtExtras)
 library(ggspatial)
-library(FedData)
 
 
 # Load kmz file and convert to vector shapefile
@@ -57,7 +67,7 @@ get_proj_NLCD <- function(name) {
   proj <- vector_file %>% sf::st_as_sf() %>% filter(Name == name)
   
   get_nlcd(
-    template = proj,
+    template = proj %>% st_buffer(dist = .001),
     year = 2019,
     label = name,
     dataset = "landcover") %>%
@@ -89,7 +99,7 @@ NLCD_Summary <- map(.x = vector_file$Name,
 
 ### NLCD x Eco-Region Table
 
-```{r final table, echo=FALSE, warning=FALSE}
+```{r summary table, echo=FALSE, warning=FALSE}
 
 # Suppress summarize warning
 options(dplyr.summarise.inform = FALSE)
@@ -279,7 +289,7 @@ Plot_Project_Class <- function(proj) {
   
   # Grab the NLCD raster associated with the desired project
   proj_raster <- get_nlcd(
-    template = proj_poly,
+    template = proj_poly %>% st_buffer(dist = .001),
     year = 2019,
     label = proj,
     dataset = "landcover") 
