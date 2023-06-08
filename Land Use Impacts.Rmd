@@ -56,8 +56,8 @@ eco_regions <- st_join(st_as_sf(vector_file),
                                layer = "L2_Clipped_Dissolved_Simplified") %>% 
                          st_as_sf() %>%
                          st_transform(crs(vector_file))) %>%
-  mutate(`EcoRegion L1` = str_to_title(NA_L1NAME),
-         `EcoRegion L2` = str_to_title(NA_L2NAME)) %>%
+  mutate(`EcoRegion L1` = gsub("Usa", "USA", str_to_title(NA_L1NAME)),
+         `EcoRegion L2` = gsub("Usa", "USA", str_to_title(NA_L2NAME))) %>%
   select(-Description, -NA_L2NAME, -NA_L1NAME)
 
 
@@ -89,7 +89,7 @@ get_proj_NLCD <- function(name) {
 
 # Return a data frame with relevant information for all projects
 NLCD_Summary <- map(.x = vector_file$Name, 
-                   .f = get_proj_NLCD) %>%
+                    .f = get_proj_NLCD) %>%
   bind_rows()
 
 ```
@@ -249,7 +249,7 @@ left_join(
   tab_row_group(
     label = "Eastern Temperate Forests (Level 1)",
     rows = `EcoRegion L2` %in% c("Mixed Wood Plains", "Ozark/Ouachita-Appalachian Forests",
-                                 "Southeastern Usa Plains", "Mississippi Alluvial And Southeast Usa Coastal Plains")) %>%
+                                 "Southeastern USA Plains", "Mississippi Alluvial And Southeast USA Coastal Plains")) %>%
   cols_label(`EcoRegion L2` = "US EPA Eco-Region (Level 2)") %>%
   summary_rows(
     columns = 2:5,
@@ -276,10 +276,8 @@ Individual project plots for all sites that impacted >1 acre of forest land (des
 
 ```{r proj plots, echo=FALSE, message=FALSE, warning=FALSE, results='hide', fig.keep='all'}
 
-### To Do ###
-# Fix the extent issue - not including the full site area!!!
-# For some reason the high density label is missing its comma, use gsub to fix?
 
+# A function that creates an NLCD raster plot and project site overlay for a single project
 Plot_Project_Class <- function(proj) {
   
   # Create a spatial feature of the desired project
@@ -314,6 +312,7 @@ Plot_Project_Class <- function(proj) {
   proj_raster %>%
     as.data.frame(xy = TRUE) %>%
     select(1, 2, "Class" = 4) %>%
+    mutate(Class = gsub("Developed High Intensity", "Developed, High Intensity", Class)) %>%
     ggplot() +
     geom_raster(aes(x = x, y = y, fill = Class)) +
     scale_fill_manual(values = c("Open Water" = '#486DA1', 
@@ -321,7 +320,7 @@ Plot_Project_Class <- function(proj) {
                                  "Developed, Open Space" = '#E1CDCE', 
                                  "Developed, Low Intensity" = '#DC9881',
                                  "Developed, Medium Intensity" = '#F10100', 
-                                 "Developed High Intensity" = '#AB0101', 
+                                 "Developed, High Intensity" = '#AB0101', 
                                  "Barren Land (Rock/Sand/Clay)" = '#B5AEA4', 
                                  "Deciduous Forest" = '#6CA966', 
                                  "Evergreen Forest" = '#1D6533', 
