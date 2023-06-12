@@ -10,7 +10,7 @@ The script only requires a user to input a .kmz file (i.e. from google earth) th
 At a high level, the script overlays project outlines, land cover data, and biome data in order to generate summary tables and plots. Each project outline is used to extract exact raster coverage from the NLCD land use data set. Then, acraege is aggregated by classification and eco-region. This process is repeated for every project in the .kmz file and appended in to one cohesive data frame. This data frame is the basis for all remaining summaries and visuals. 
 
 *Figure 1. (Top) Google earth outline of sample project and (bottom) resulting output plot*  
-<img src="/Exports/process.PNG" width="100%" height="100%">
+<img src="/Exports/process.PNG" width="90%" height="90%">
 
 *Figure 2. Summary table of acreage by NLCD class and eco-region*  
 <img src="/Exports/summary_table.PNG" width="90%" height="90%">
