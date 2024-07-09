@@ -65,7 +65,7 @@ get_proj_NLCD <- function(name) {
   
   get_nlcd(
     template = proj %>% st_buffer(dist = .001),
-    year = 2019,
+    year = 2021,
     label = name,
     dataset = "landcover") %>%
     exact_extract(proj) %>%
@@ -285,13 +285,13 @@ Plot_Project_Class <- function(proj) {
   # Grab the NLCD raster associated with the desired project
   proj_raster <- get_nlcd(
     template = proj_poly %>% st_buffer(dist = .001),
-    year = 2019,
+    year = 2021,
     label = proj,
     dataset = "landcover") 
   
   # Re-create the proj_poly with an updated and common CRS
   proj_poly_crs <- vector_file %>% 
-    spTransform(crs(proj_raster)) %>% 
+    st_transform(crs(proj_raster)) %>% 
     sf::st_as_sf() %>% 
     filter(Name == proj)
   
@@ -308,7 +308,7 @@ Plot_Project_Class <- function(proj) {
   # Plot the desired project with both raster classes and polygon overlay
   proj_raster %>%
     as.data.frame(xy = TRUE) %>%
-    select(1, 2, "Class" = 4) %>%
+    #select(1, 2, "Class" = 4) %>%
     mutate(Class = gsub("Developed High Intensity", "Developed, High Intensity", Class)) %>%
     ggplot() +
     geom_raster(aes(x = x, y = y, fill = Class)) +
@@ -360,3 +360,4 @@ map(.x = NLCD_Summary %>%
     .f = Plot_Project_Class)
 
 ```
+
