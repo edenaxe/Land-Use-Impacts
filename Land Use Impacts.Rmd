@@ -9,7 +9,6 @@ output: html_document
 if (!require(tidyverse)) install.packages('tidyverse')
 if (!require(FedData)) install.packages('FedData')
 if (!require(raster)) install.packages('raster')
-if (!require(rgdal)) install.packages('rgdal')
 if (!require(sf)) install.packages('sf')
 if (!require(exactextractr)) install.packages('exactextractr')
 if (!require(gt)) install.packages('gt')
@@ -19,7 +18,6 @@ if (!require(ggspatial)) install.packages('ggspatial')
 library(tidyverse)
 library(FedData)
 library(raster)
-library(rgdal)
 library(sf)
 library(exactextractr)
 library(gt)
@@ -29,7 +27,7 @@ library(ggspatial)
 
 # Load kmz file and convert to vector shapefile
 vector_path <- "Data/Example Projects.kmz"
-vector_file <- readOGR(dsn = gsub(".kmz", ".kml", unzip(vector_path)), "Example Projects")
+vector_file <- st_read(dsn = gsub(".kmz", ".kml", unzip(vector_path)), "Example Projects")
 
 
 # Create an NLCD classification reference table with codes, categories, and classes
@@ -52,9 +50,8 @@ NLCD_Classifications <- data.frame(
 # Load US EPA Eco-region file and merge with vector file to generate a merged spatial data frame
 sf::sf_use_s2(FALSE)
 eco_regions <- st_join(st_as_sf(vector_file), 
-                       readOGR(dsn = "Data/US EPA Ecoregions/L2_Clipped_Dissolved_Simplified.shp", 
+                       st_read(dsn = "Data/US EPA Ecoregions/L2_Clipped_Dissolved_Simplified.shp", 
                                layer = "L2_Clipped_Dissolved_Simplified") %>% 
-                         st_as_sf() %>%
                          st_transform(crs(vector_file))) %>%
   mutate(`EcoRegion L1` = gsub("Usa", "USA", str_to_title(NA_L1NAME)),
          `EcoRegion L2` = gsub("Usa", "USA", str_to_title(NA_L2NAME))) %>%
