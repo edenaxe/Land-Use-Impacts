@@ -1,5 +1,5 @@
 ---
-title: "Land Use Impacts - 2022 Results [Example Data]"
+title: "Land Use Impacts - Sample Results"
 output: html_document
 ---
 
@@ -24,6 +24,10 @@ library(gt)
 library(gtExtras)
 library(ggspatial)
 
+
+# Set the NLCD year based on newest availability 
+# NOTE: The L48 data set for 2021 is corrupted on the NLCD Mapserver, and is thus not available through FedData
+nlcd_yr <- 2019
 
 # Load kmz file and convert to vector shapefile
 vector_path <- "Data/Example Projects.kmz"
@@ -65,7 +69,7 @@ get_proj_NLCD <- function(name) {
   
   get_nlcd(
     template = proj %>% st_buffer(dist = .001),
-    year = 2021,
+    year = nlcd_yr,
     label = name,
     dataset = "landcover") %>%
     exact_extract(proj) %>%
@@ -117,9 +121,9 @@ Final_Table <- NLCD_Summary %>%
   left_join(
     NLCD_Classifications,
     by = c("Classification" = "Class_Name")) %>%
-  select(`Class_Code`, Classification, `Eastern Temperate Forests`,
-         `North American Deserts`, `Great Plains`, `Marine West Coast Forest`, 
-         `Mediterranean California`, `Total`)
+  select(`Class_Code`, Classification, unique(eco_regions$`EcoRegion L1`), `Total`)
+
+col_num <- length(unique(eco_regions$`EcoRegion L1`))+3
 
 # Create the final gt() table
 Final_Table %>%
@@ -129,7 +133,7 @@ Final_Table %>%
   # Center align numeric columns 
   cols_align(
     align = "center",
-    columns = c(3:8)) %>%
+    columns = c(3:col_num)) %>%
   # Left align the Classification column
   cols_align(
     align = "left",
@@ -165,17 +169,17 @@ Final_Table %>%
   # Color the total column with a light gray
   tab_style(
     style = list(cell_fill(color = "gray", alpha = 0.5)),
-    locations = cells_body(columns = 8)) %>%
+    locations = cells_body(columns = col_num)) %>%
   # Define the column widths for all columns
   cols_width(
     columns = c(2) ~ px(25),
     columns = c(3) ~ px(270),
-    columns = c(4:8) ~ px(100),
+    columns = c(4:col_num) ~ px(100),
     columns = "Total" ~ px(100)) %>%
   # Create a tab spanner for the EPA eco-region columns
   tab_spanner(
     label = "EPA Eco-Region (Level 1)",
-    columns = 3:7) %>%
+    columns = 3:(col_num-1)) %>%
   # Add a title and sub-title to the table
   tab_header(
     title = "Acreage by NLCD Classification and EPA Eco-Region",
@@ -202,12 +206,12 @@ Final_Table %>%
     rows = Classification %in% c("Deciduous Forest", "Evergreen Forest", "Mixed Forest")) %>%
   # Create summary rows for all numeric columns
   summary_rows(
-    columns = 3:8,
+    columns = 3:col_num,
     fns = list(Total = ~sum(.)),
     formatter = fmt_number, decimals = 0) %>%
   # Format all numbers in the table body to have 1 decimal point
   fmt_number(
-    columns = 3:8,
+    columns = 3:col_num,
     decimals = 1) %>%
   # Add a 538 theme to the whole table
   gt_theme_538() 
@@ -285,7 +289,7 @@ Plot_Project_Class <- function(proj) {
   # Grab the NLCD raster associated with the desired project
   proj_raster <- get_nlcd(
     template = proj_poly %>% st_buffer(dist = .001),
-    year = 2021,
+    year = nlcd_yr,
     label = proj,
     dataset = "landcover") 
   
